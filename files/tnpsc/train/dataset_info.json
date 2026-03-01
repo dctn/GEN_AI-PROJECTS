@@ -1,0 +1,85 @@
+{
+  "builder_name": "parquet",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "tamil_tnpsc_exam",
+  "dataset_size": 310915,
+  "description": "",
+  "download_checksums": {
+    "hf://datasets/snegha24/Tamil_tnpscExam@a60d2ab87b4027ea9e5184dfaae7680c8fa803c0/data/train-00000-of-00001.parquet": {
+      "num_bytes": 85044,
+      "checksum": null
+    }
+  },
+  "download_size": 85044,
+  "features": {
+    "language": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "country": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "file_name": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "source": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "license": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "level": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "category_en": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "category_original_lang": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "original_question_num": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "question": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "options": {
+      "feature": {
+        "dtype": "string",
+        "_type": "Value"
+      },
+      "_type": "List"
+    },
+    "answer": {
+      "dtype": "string",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 395959,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 310915,
+      "num_examples": 516,
+      "dataset_name": "tamil_tnpsc_exam"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}

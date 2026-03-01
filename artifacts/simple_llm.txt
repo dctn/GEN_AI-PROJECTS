@@ -1,0 +1,155 @@
+## Quick‑Start Guide: Handling 429 (Too Many Requests) with LangSmith
+
+> **Why 429?**  
+> The LangSmith API enforces rate limits per‑workspace. When you hit those limits you receive a `429` response.  
+> Most 429s are *temporary* – they’re usually caused by short‑term spikes in traffic. Retrying after a brief pause often succeeds.
+
+Below is a concise, practical recipe you can drop into any LangChain application that talks to LangSmith.
+
+---
+
+### 1. What the SDK already does
+
+If you’re using the **LangSmith SDK** (the official Python client), it comes with:
+
+| Feature | How it works | When you need to add your own logic |
+|---------|--------------|-------------------------------------|
+| **Automatic retry** | Exponential back‑off + jitter (up to 3 attempts by default) | When you need custom retry counts, back‑off windows, or to log each attempt |
+| **Rate‑limit handling** | Detects 429 and waits before retrying | If you want to expose the wait time to the user or adjust the policy |
+
+> **Tip:** Check your SDK version (`pip show langsmith` or `langsmith.__version__`). Newer releases may have enhanced retry logic.
+
+---
+
+### 2. Building your own retry wrapper
+
+If you’re calling the raw HTTP endpoint (or want more control), wrap the request with a retry loop:
+
+```python
+import time
+import random
+import requests
+from typing import Callable
+
+def exponential_backoff_retry(
+    func: Callable,
+    *,
+    max_attempts: int = 5,
+    base_delay: float = 0.5,   # seconds
+    max_delay: float = 30.0,   # seconds
+    jitter: bool = True,
+) -> any:
+    """
+    Retries `func` on HTTP 429 with exponential back‑off + jitter.
+    """
+    attempt = 0
+    while attempt < max_attempts:
+        try:
+            return func()
+        except requests.HTTPError as exc:
+            if exc.response.status_code != 429:
+                # Re‑raise non‑429 errors immediately
+                raise
+
+            # 429 – compute wait time
+            attempt += 1
+            delay = min(base_delay * (2 ** (attempt - 1)), max_delay)
+            if jitter:
+                delay = random.uniform(0, delay)
+
+            # Optional: log the retry
+            print(f"429 received. Retrying in {delay:.2f}s (attempt {attempt}/{max_attempts})")
+            time.sleep(delay)
+
+    # After exhausting retries, raise the last exception
+    raise RuntimeError(f"Exceeded {max_attempts} retry attempts for 429")
+
+# Example usage
+def call_langsmith():
+    url = "https://api.langsmith.io/v1/endpoint"
+    headers = {"Authorization": f"Bearer {API_KEY}"}
+    response = requests.post(url, json={"data": "foo"}, headers=headers)
+    response.raise_for_status()  # will raise for 4xx/5xx
+    return response.json()
+
+result = exponential_backoff_retry(call_langsmith)
+print(result)
+```
+
+#### What the code does
+
+1. **Attempt the request** – `func()` is called once per loop.
+2. **Check for 429** – Only retries on `429`. All other HTTP errors bubble up immediately.
+3. **Calculate delay** – Exponential back‑off (`base_delay * 2^(attempt-1)`) capped at `max_delay`.  
+   Jitter (`random.uniform(0, delay)`) spreads retries across clients.
+4. **Log** – Handy for debugging or telemetry.
+5. **Stop** – After `max_attempts` you raise an error.
+
+---
+
+### 3. Integrating with LangChain
+
+If you’re using LangChain’s `LLM` wrappers, you can plug the retry logic into the `call` method:
+
+```python
+from langchain.llms import OpenAI
+import requests
+
+class RetryingOpenAI(OpenAI):
+    def _call(self, prompt: str, stop: list | None = None, **kwargs) -> str:
+        def wrapped_call():
+            return super()._call(prompt, stop=stop, **kwargs)
+
+        return exponential_backoff_retry(
+            wrapped_call,
+            max_attempts=6,
+            base_delay=1.0,
+            max_delay=60.0,
+        )
+
+llm = RetryingOpenAI(api_key="YOUR_KEY")
+response = llm("Tell me a joke.")
+print(response)
+```
+
+> **Why subclass?**  
+> The SDK’s built‑in retry may not expose all parameters you need. Subclassing gives you full control while keeping the rest of LangChain’s plumbing intact.
+
+---
+
+### 4. Monitoring & Observability
+
+- **Log each retry** – Helps you spot patterns (e.g., a sudden spike causing many 429s).
+- **Expose metrics** – Count 429 responses and retries per minute.  
+  ```python
+  from prometheus_client import Counter
+  retry_counter = Counter('langsmith_retries_total', 'Total retries performed')
+  # increment inside the retry loop
+  retry_counter.inc()
+  ```
+- **Alerting** – If `429` rate exceeds X per minute, alert ops.
+
+---
+
+### 5. When to Consider a Different Plan
+
+If you consistently hit rate limits even with retries:
+
+| Symptom | Likely Cause | Suggested Action |
+|---------|--------------|------------------|
+| Frequent 429s at peak usage | Under‑provisioned plan | Upgrade to a higher tier or request a custom rate limit |
+| 429s spread over many users | Shared workspace limits | Create separate workspaces or isolate workloads |
+| 429s during batch jobs | Long‑running or high‑frequency calls | Optimize batch size, add internal throttling |
+
+Contact LangSmith support with your usage logs; they can recommend a plan that matches your traffic profile.
+
+---
+
+## TL;DR
+
+1. **Use the SDK’s built‑in retry** if it meets your needs.  
+2. **Otherwise, implement exponential back‑off + jitter** (see code).  
+3. **Log & monitor** retries to catch patterns.  
+4. **If limits persist, upgrade or split workspaces**.
+
+Happy building! 🚀
