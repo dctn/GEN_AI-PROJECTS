@@ -63,7 +63,7 @@ if user_question and st.session_state.embedding == None:
 
 if user_question:
     similar_output_question = st.session_state.embedding.similarity_search_with_score(user_question,k=no_of_questions)
-
+    is_similar_available = False
     st.markdown('## similar questions')
     for index in range(len(similar_output_question)):
         if similar_output_question[index][1] < 0.9:
@@ -85,8 +85,10 @@ if user_question:
 
                 st.markdown('**Question paper Download link**:')
                 st.write(similar_output_question[index][0].metadata['link'])
-        else:
-            st.markdown(f'**no similar questions matched **')
+
+                is_similar_available = True
+    if not is_similar_available:
+        st.markdown(f'# no similar questions matched')
 
 
 
