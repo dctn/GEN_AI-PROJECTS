@@ -29,8 +29,10 @@ dependencies = [
     "notebook>=7.5.3",
     "pypdf>=6.6.1",
     "python-dotenv>=1.2.1",
+    "python-magic-bin>=0.4.14",
     "requests>=2.32.5",
     "resend>=2.30.0",
     "sentence-transformers>=5.2.2",
     "streamlit>=1.54.0",
+    "unstructured[all-docs,docx,md]>=0.27.5",
 ]
